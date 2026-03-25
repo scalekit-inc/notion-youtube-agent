@@ -1,0 +1,87 @@
+{
+  "title": "Notion AI Agent",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "task": {
+      "title": "Task",
+      "type": "string",
+      "description": "What should the agent do? e.g. 'Find all pages about Q1 planning' or 'Create a new page titled Meeting Notes with today's date'",
+      "editor": "textarea"
+    },
+    "searchKeyword": {
+      "title": "YouTube Search Keyword",
+      "type": "string",
+      "description": "Keyword to research on YouTube (e.g. 'clerk creators'). If provided, runs the YouTube → Notion research workflow instead of the generic agent."
+    },
+    "notionPageId": {
+      "title": "Notion Page ID",
+      "type": "string",
+      "description": "ID of the Notion page to append YouTube research results to (required when searchKeyword is set)"
+    },
+    "llmProvider": {
+      "title": "LLM Provider",
+      "type": "string",
+      "description": "Which LLM to use for the agent",
+      "enum": ["anthropic", "openai"],
+      "default": "anthropic"
+    },
+    "llmModel": {
+      "title": "LLM Model",
+      "type": "string",
+      "description": "Model name. Leave blank to use the default for the chosen provider.",
+      "default": ""
+    },
+    "llmApiKey": {
+      "title": "LLM API Key",
+      "type": "string",
+      "description": "API key for Anthropic or OpenAI",
+      "isSecret": true
+    },
+    "scalekitEnvUrl": {
+      "title": "Scalekit Environment URL",
+      "type": "string",
+      "description": "Your Scalekit environment URL (e.g. https://your-env.scalekit.cloud)"
+    },
+    "scalekitClientId": {
+      "title": "Scalekit Client ID",
+      "type": "string",
+      "description": "Scalekit OAuth client ID"
+    },
+    "scalekitClientSecret": {
+      "title": "Scalekit Client Secret",
+      "type": "string",
+      "description": "Scalekit OAuth client secret",
+      "isSecret": true
+    },
+    "notionIdentifier": {
+      "title": "Notion Account Identifier",
+      "type": "string",
+      "description": "Identifier used when connecting the Notion account in Scalekit",
+      "default": "shared-notion"
+    },
+    "youtubeIdentifier": {
+      "title": "YouTube Account Identifier",
+      "type": "string",
+      "description": "Scalekit identifier for the YouTube connected account",
+      "default": "shared-youtube"
+    },
+    "topN": {
+      "title": "Top N Channels",
+      "type": "integer",
+      "description": "How many top channels to surface in the Notion page",
+      "default": 15,
+      "minimum": 1,
+      "maximum": 50
+    },
+    "maxIterations": {
+      "title": "Max Agent Iterations",
+      "type": "integer",
+      "description": "Safety limit on the number of LLM + tool call rounds (generic agent mode only)",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 50
+    }
+  },
+  "required": ["llmApiKey", "scalekitEnvUrl", "scalekitClientId", "scalekitClientSecret"]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "notion-ai-agent",
+  "version": "1.0.0",
+  "description": "Notion AI agent powered by Claude/GPT-4o and Scalekit, published on Apify Store",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "auth:setup": "node auth-setup/setup.js",
+    "dev": "apify run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@apify/actor-templates": "latest",
+    "@scalekit-sdk/node": "latest",
+    "apify": "^3.0.0",
+    "dotenv": "^16.0.0",
+    "openai": "^4.0.0"
+  }
+}

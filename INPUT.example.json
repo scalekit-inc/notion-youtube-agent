@@ -1,0 +1,25 @@
+{
+  "_comment": "Copy this to storage/key_value_stores/default/INPUT.json for local testing",
+
+  "_mode_youtube_research": "Use searchKeyword + notionPageId to run the YouTube → Notion workflow",
+  "searchKeyword": "clerk creators",
+  "notionPageId": "YOUR-NOTION-PAGE-ID",
+  "youtubeIdentifier": "shared-youtube",
+  "topN": 15,
+
+  "_mode_generic_agent": "Use task for generic Notion operations (omit searchKeyword)",
+  "task": "Find all pages about Q1 planning and list their titles",
+
+  "_llm": "Set llmProvider to anthropic or openai",
+  "llmProvider": "openai",
+  "llmModel": "gpt-4o",
+  "llmApiKey": "YOUR-API-KEY",
+
+  "_scalekit": "Scalekit credentials from your dashboard",
+  "scalekitEnvUrl": "https://your-env.scalekit.com",
+  "scalekitClientId": "prd_skc_xxxxx",
+  "scalekitClientSecret": "YOUR-SECRET",
+  "notionIdentifier": "shared-notion",
+
+  "maxIterations": 10
+}

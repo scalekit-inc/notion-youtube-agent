@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "notion-ai-agent",
+  "title": "Notion AI Agent",
+  "description": "AI agent that reads and creates Notion pages using natural language instructions. Powered by Claude/GPT-4o and authenticated via Scalekit.",
+  "version": "1.0",
+  "input": "./input_schema.json",
+  "output": "./dataset_schema.json",
+  "dockerfile": "../Dockerfile",
+  "pay_per_event": "./pay_per_event.json"
+}

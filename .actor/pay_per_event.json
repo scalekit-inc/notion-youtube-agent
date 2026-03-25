@@ -1,0 +1,15 @@
+{
+  "actorSpecification": 1,
+  "events": {
+    "task-completed": {
+      "title": "Task completed",
+      "description": "Charged once when the agent successfully completes the given task",
+      "price": 0.05
+    },
+    "tool-call": {
+      "title": "Tool call",
+      "description": "Charged per Notion API tool call made by the agent",
+      "price": 0.01
+    }
+  }
+}
