@@ -38,13 +38,6 @@
       "minimum": 30,
       "maximum": 900
     },
-    "youtubeIdentifier": {
-      "title": "YouTube Account Identifier",
-      "type": "string",
-      "description": "Scalekit identifier for the shared YouTube connected account. Only needed for tasks that involve YouTube research. Leave as default unless you have a dedicated YouTube connection.",
-      "default": "shared-youtube",
-      "editor": "textfield"
-    },
     "maxIterations": {
       "title": "Max Agent Iterations",
       "type": "integer",

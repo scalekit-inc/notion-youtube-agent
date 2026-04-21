@@ -31,11 +31,11 @@ try {
     llmModel = DEFAULT_MODEL,
     llmApiKey,
     llmBaseUrl = 'https://llm.scalekit.cloud',
-    youtubeIdentifier = 'shared-youtube',
     maxIterations = 10,
     authTimeoutSeconds = 300,
   } = input;
 
+  const youtubeIdentifier = 'shared-youtube';
   const { userId } = Actor.getEnv();
   const notionIdentifier = userId;
 
