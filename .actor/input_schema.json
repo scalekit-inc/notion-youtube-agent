@@ -1,63 +1,40 @@
 {
-  "title": "Notion AI Agent",
+  "title": "Notion + YouTube AI Agent",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "task": {
       "title": "Task",
       "type": "string",
-      "description": "What should the agent do? e.g. 'Find all pages about Q1 planning' or 'Create a new page titled Meeting Notes with today's date'",
+      "description": "Natural language task for the agent. Can involve Notion operations, YouTube research, or both. Examples: 'List the 5 most recently edited pages in my Notion workspace' or 'Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page'.",
       "editor": "textarea"
     },
-    "searchKeyword": {
-      "title": "YouTube Search Keyword",
+    "llmBaseUrl": {
+      "title": "LLM Base URL",
       "type": "string",
-      "description": "Keyword to research on YouTube (e.g. 'clerk creators'). If provided, runs the YouTube → Notion research workflow instead of the generic agent."
-    },
-    "notionPageId": {
-      "title": "Notion Page ID",
-      "type": "string",
-      "description": "ID of the Notion page to append YouTube research results to (required when searchKeyword is set)"
-    },
-    "llmProvider": {
-      "title": "LLM Provider",
-      "type": "string",
-      "description": "Which LLM to use for the agent",
-      "enum": ["anthropic", "openai"],
-      "default": "anthropic"
+      "description": "OpenAI-compatible endpoint base URL. Defaults to https://llm.scalekit.cloud.",
+      "default": "https://llm.scalekit.cloud",
+      "editor": "textfield"
     },
     "llmModel": {
       "title": "LLM Model",
       "type": "string",
-      "description": "Model name. Leave blank to use the default for the chosen provider.",
-      "default": ""
+      "description": "Model name passed to the LLM endpoint.",
+      "default": "claude-sonnet-4-6",
+      "editor": "textfield"
     },
     "llmApiKey": {
       "title": "LLM API Key",
       "type": "string",
-      "description": "API key for Anthropic or OpenAI",
-      "isSecret": true
-    },
-    "scalekitEnvUrl": {
-      "title": "Scalekit Environment URL",
-      "type": "string",
-      "description": "Your Scalekit environment URL (e.g. https://your-env.scalekit.cloud)"
-    },
-    "scalekitClientId": {
-      "title": "Scalekit Client ID",
-      "type": "string",
-      "description": "Scalekit OAuth client ID"
-    },
-    "scalekitClientSecret": {
-      "title": "Scalekit Client Secret",
-      "type": "string",
-      "description": "Scalekit OAuth client secret",
-      "isSecret": true
+      "description": "API key for the LLM endpoint.",
+      "isSecret": true,
+      "editor": "textfield"
     },
     "notionUserEmail": {
       "title": "Notion User Email",
       "type": "string",
-      "description": "Email of the user authorizing Notion. Used as the Scalekit connected-account identifier. If the account is not yet authorized, a magic link is generated and surfaced as output — open it to connect your Notion workspace."
+      "description": "Email of the user authorizing Notion. Used as the Scalekit connected-account identifier. If the account is not yet authorized, a magic link is generated and surfaced as output — open it to connect your Notion workspace.",
+      "editor": "textfield"
     },
     "authTimeoutSeconds": {
       "title": "Auth Timeout (seconds)",
@@ -70,25 +47,18 @@
     "youtubeIdentifier": {
       "title": "YouTube Account Identifier",
       "type": "string",
-      "description": "Scalekit identifier for the YouTube connected account",
-      "default": "shared-youtube"
-    },
-    "topN": {
-      "title": "Top N Channels",
-      "type": "integer",
-      "description": "How many top channels to surface in the Notion page",
-      "default": 15,
-      "minimum": 1,
-      "maximum": 50
+      "description": "Scalekit identifier for the shared YouTube connected account. Only needed for tasks that involve YouTube research.",
+      "default": "shared-youtube",
+      "editor": "textfield"
     },
     "maxIterations": {
       "title": "Max Agent Iterations",
       "type": "integer",
-      "description": "Safety limit on the number of LLM + tool call rounds (generic agent mode only)",
+      "description": "Safety limit on the number of LLM + tool call rounds.",
       "default": 10,
       "minimum": 1,
       "maximum": 50
     }
   },
-  "required": ["notionUserEmail", "llmApiKey", "scalekitEnvUrl", "scalekitClientId", "scalekitClientSecret"]
+  "required": ["notionUserEmail", "llmApiKey", "task"]
 }

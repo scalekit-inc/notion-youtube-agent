@@ -1,25 +1,23 @@
 {
   "_comment": "Copy this to storage/key_value_stores/default/INPUT.json for local testing",
 
-  "_mode_youtube_research": "Use searchKeyword + notionPageId to run the YouTube → Notion workflow",
-  "searchKeyword": "clerk creators",
-  "notionPageId": "YOUR-NOTION-PAGE-ID",
-  "youtubeIdentifier": "shared-youtube",
-  "topN": 15,
+  "_tasks": "The agent handles both Notion and YouTube via natural language. Examples below:",
+  "_task_notion_only": "List the 5 most recently edited pages in my Notion workspace",
+  "_task_youtube_to_notion": "Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page",
 
-  "_mode_generic_agent": "Use task for generic Notion operations (omit searchKeyword)",
-  "task": "Find all pages about Q1 planning and list their titles",
+  "task": "Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page",
 
-  "_llm": "Set llmProvider to anthropic or openai",
-  "llmProvider": "openai",
-  "llmModel": "gpt-4o",
+  "notionUserEmail": "you@example.com",
+
+  "_llm": "LiteLLM proxy at llm.scalekit.cloud — set llmBaseUrl for a different endpoint",
+  "llmBaseUrl": "https://llm.scalekit.cloud",
+  "llmModel": "claude-sonnet-4-6",
   "llmApiKey": "YOUR-API-KEY",
 
-  "_scalekit": "Scalekit credentials from your dashboard",
-  "scalekitEnvUrl": "https://your-env.scalekit.com",
-  "scalekitClientId": "prd_skc_xxxxx",
-  "scalekitClientSecret": "YOUR-SECRET",
-  "notionIdentifier": "shared-notion",
+  "_scalekit": "Scalekit credentials are operator env vars — set SCALEKIT_ENV_URL, SCALEKIT_CLIENT_ID, SCALEKIT_CLIENT_SECRET in .env (local) or actor env var settings (Apify Console)",
 
-  "maxIterations": 10
+  "_youtube": "youtubeIdentifier is the shared YouTube connected account — only needed for YouTube tasks",
+  "youtubeIdentifier": "shared-youtube",
+
+  "maxIterations": 15
 }

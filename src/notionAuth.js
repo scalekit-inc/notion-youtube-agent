@@ -1,14 +1,4 @@
-/**
- * Notion connected-account auth helper.
- *
- * Ensures a per-user Notion connected account (identified by email) is ACTIVE
- * before the actor proceeds with any Notion operations.
- *
- * Flow:
- *   1. Check if the account for `email` is already ACTIVE → return immediately
- *   2. If not, generate a magic link (OAuth authorization URL) and call onMagicLink(link)
- *   3. Poll Scalekit every `pollIntervalMs` until the account becomes ACTIVE or `timeoutMs` elapses
- */
+import { Actor } from 'apify';
 
 const ACTIVE = 1;
 const STATUS_LABEL = { 0: 'UNSPECIFIED', 1: 'ACTIVE', 2: 'EXPIRED', 3: 'PENDING_AUTH' };
@@ -48,9 +38,15 @@ export async function ensureNotionConnected(scalekitActions, email, {
 
   await onMagicLink(link);
 
-  console.log(`Waiting for user to authorize Notion (timeout: ${timeoutMs / 1000}s)...`);
+  const timeoutSec = Math.round(timeoutMs / 1000);
+  console.log(`Waiting up to ${timeoutSec}s for Notion authorization...`);
+
+  // Show the magic link prominently in the Apify Console run header
+  await Actor.setStatusMessage(`ACTION REQUIRED: Open magic link to authorize Notion → ${link}`);
 
   const deadline = Date.now() + timeoutMs;
+  const logIntervalMs = 30_000; // log every 30s, not every poll
+  let lastLogAt = Date.now();
 
   while (Date.now() < deadline) {
     await sleep(pollIntervalMs);
@@ -60,19 +56,25 @@ export async function ensureNotionConnected(scalekitActions, email, {
       identifier: email,
     });
     const polledAccount = pollResp.connectedAccount ?? pollResp;
-    const pollLabel = STATUS_LABEL[polledAccount.status] ?? polledAccount.status;
-
-    console.log(`  Notion auth status for "${email}": ${pollLabel}`);
 
     if (polledAccount.status === ACTIVE) {
-      console.log(`  Notion account for "${email}" is now ACTIVE.`);
+      await Actor.setStatusMessage('Notion authorized — proceeding with research.');
+      console.log(`Notion account for "${email}" is now ACTIVE.`);
       return polledAccount.id;
+    }
+
+    if (Date.now() - lastLogAt >= logIntervalMs) {
+      const remaining = Math.round((deadline - Date.now()) / 1000);
+      const label = STATUS_LABEL[polledAccount.status] ?? polledAccount.status;
+      console.log(`  Notion auth status: ${label} — ${remaining}s remaining`);
+      lastLogAt = Date.now();
     }
   }
 
+  await Actor.setStatusMessage('Timed out waiting for Notion authorization.');
   throw new Error(
-    `Timed out after ${timeoutMs / 1000}s waiting for Notion authorization. ` +
-    `Please complete the authorization via the magic link and re-run the actor.`,
+    `Timed out after ${timeoutSec}s waiting for Notion authorization. ` +
+    `Complete the magic link and re-run the actor.`,
   );
 }
 

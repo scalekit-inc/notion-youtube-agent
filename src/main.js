@@ -1,26 +1,25 @@
 /**
- * Apify Actor entry point for the Notion AI Agent.
+ * Apify Actor entry point for the Notion + YouTube AI Agent.
  *
- * Two modes:
- *   - YouTube research (searchKeyword): searches YouTube, scores channels, appends to Notion page
- *   - Generic Notion agent (task): natural language Notion operations via LLM + tools
+ * Single mode: natural language "task" handled by an agent with access to both
+ * Notion tools (search, read, create, append) and a YouTube research tool.
+ *
+ * Example tasks:
+ *   "List the 5 most recently edited pages in my Notion workspace"
+ *   "Search YouTube for clerk creators and append the top 10 to my Marketing Research page"
  *
  * Notion auth is per-user: the actor accepts a notionUserEmail, creates a Scalekit
  * connected account with that email as the identifier, generates a magic link if the
- * account is not yet authorized, outputs it immediately, then polls until ACTIVE before
- * proceeding. If the account is already ACTIVE from a previous run it skips auth entirely.
- *
- * YouTube continues to use the shared static connected account (youtubeIdentifier).
+ * account is not yet authorized, outputs it immediately, then polls until ACTIVE.
  */
 
 import { Actor } from 'apify';
 import { ScalekitClient } from '@scalekit-sdk/node';
-import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { PROVIDERS, DEFAULT_MODELS } from './llm.js';
+import { DEFAULT_MODEL } from './llm.js';
 import { runAgent } from './agent.js';
-import { runYouTubeNotionWorkflow } from './youtubeNotionWorkflow.js';
 import { ensureNotionConnected } from './notionAuth.js';
+import { ensureYouTubeConnected } from './youtubeAuth.js';
 
 await Actor.init();
 
@@ -29,54 +28,38 @@ try {
 
   const {
     task,
-    searchKeyword,
-    notionPageId,
-    llmProvider = PROVIDERS.ANTHROPIC,
-    llmModel = '',
+    llmModel = DEFAULT_MODEL,
     llmApiKey,
-    scalekitEnvUrl,
-    scalekitClientId,
-    scalekitClientSecret,
+    llmBaseUrl = 'https://llm.scalekit.cloud',
     notionUserEmail,
     youtubeIdentifier = 'shared-youtube',
-    topN = 15,
     maxIterations = 10,
     authTimeoutSeconds = 300,
   } = input;
 
-  if (!searchKeyword && !task) {
-    throw new Error('Provide either "task" (generic agent) or "searchKeyword" (YouTube research workflow).');
-  }
+  const scalekitEnvUrl = process.env.SCALEKIT_ENV_URL;
+  const scalekitClientId = process.env.SCALEKIT_CLIENT_ID;
+  const scalekitClientSecret = process.env.SCALEKIT_CLIENT_SECRET;
+
+  if (!task) throw new Error('Input "task" is required.');
   if (!notionUserEmail) throw new Error('Input "notionUserEmail" is required.');
   if (!llmApiKey) throw new Error('Input "llmApiKey" is required.');
   if (!scalekitEnvUrl || !scalekitClientId || !scalekitClientSecret) {
-    throw new Error('Scalekit credentials (scalekitEnvUrl, scalekitClientId, scalekitClientSecret) are required.');
+    throw new Error('Scalekit credentials missing. Set SCALEKIT_ENV_URL, SCALEKIT_CLIENT_ID, SCALEKIT_CLIENT_SECRET as actor environment variables.');
   }
 
-  // Build LLM client
-  let client;
-  if (llmProvider === PROVIDERS.ANTHROPIC) {
-    client = new Anthropic({ apiKey: llmApiKey });
-  } else if (llmProvider === PROVIDERS.OPENAI) {
-    client = new OpenAI({ apiKey: llmApiKey });
-  } else {
-    throw new Error(`Unknown llmProvider: "${llmProvider}". Use "anthropic" or "openai".`);
-  }
-
+  const client = new OpenAI({ apiKey: llmApiKey, baseURL: llmBaseUrl });
   const scalekit = new ScalekitClient(scalekitEnvUrl, scalekitClientId, scalekitClientSecret);
-  const resolvedModel = llmModel || DEFAULT_MODELS[llmProvider];
 
-  console.log(`LLM: ${llmProvider} / ${resolvedModel}`);
+  console.log(`LLM: ${llmBaseUrl} / ${llmModel}`);
   console.log(`Notion user: ${notionUserEmail}`);
+  console.log(`Task: ${task}`);
 
-  // ── Notion auth: per-user connected account ──────────────────────────────
   await ensureNotionConnected(scalekit.actions, notionUserEmail, {
     timeoutMs: authTimeoutSeconds * 1000,
     onMagicLink: async (link) => {
       console.log(`\nNotion authorization required for ${notionUserEmail}.`);
       console.log(`Magic link: ${link}\n`);
-      // Surface the link immediately in the actor's key-value store OUTPUT so
-      // the user can see and click it while the actor polls in the background.
       await Actor.setValue('OUTPUT', {
         status: 'AWAITING_NOTION_AUTH',
         notionUserEmail,
@@ -86,69 +69,45 @@ try {
     },
   });
 
-  // notionUserEmail is now the active Scalekit identifier for all Notion calls
-  const notionIdentifier = notionUserEmail;
+  await ensureYouTubeConnected(scalekit.actions, youtubeIdentifier, {
+    timeoutMs: authTimeoutSeconds * 1000,
+    onMagicLink: async (link) => {
+      console.log(`\nYouTube authorization required for "${youtubeIdentifier}".`);
+      console.log(`Magic link: ${link}\n`);
+      await Actor.setValue('OUTPUT', {
+        status: 'AWAITING_YOUTUBE_AUTH',
+        youtubeIdentifier,
+        magicLink: link,
+        message: `Open the magic link to authorize YouTube for "${youtubeIdentifier}". The actor will continue automatically once you complete authorization.`,
+      });
+    },
+  });
 
-  if (searchKeyword) {
-    // ── YouTube → Notion research workflow ──────────────────────────────────
-    if (!notionPageId) throw new Error('"notionPageId" is required when using searchKeyword.');
-    console.log(`Mode: YouTube research workflow`);
-    console.log(`Keyword: ${searchKeyword} | Notion page: ${notionPageId}`);
-
-    const { topChannels, totalChannelsFound, variations } = await runYouTubeNotionWorkflow({
-      client,
-      provider: llmProvider,
-      model: resolvedModel,
-      scalekitActions: scalekit.actions,
-      youtubeIdentifier,
-      notionIdentifier,
-      notionPageId,
-      keyword: searchKeyword,
-      topN,
-    });
-
-    await Actor.charge({ eventName: 'task-completed', count: 1 });
-    await Actor.setValue('OUTPUT', {
-      status: 'DONE',
-      notionUserEmail,
-      keyword: searchKeyword,
-      variations,
-      totalChannelsFound,
-      topChannels,
-      notionPageId,
-    });
-    await Actor.pushData({ keyword: searchKeyword, variations, totalChannelsFound, topChannels, notionPageId });
-    console.log(`\nDone. ${topChannels.length} channels written to Notion.`);
-  } else {
-    // ── Generic Notion agent ─────────────────────────────────────────────────
-    console.log(`Mode: Generic Notion agent | Task: ${task}`);
-
-    const { result, steps } = await runAgent({
-      client,
-      provider: llmProvider,
-      model: resolvedModel,
-      scalekitActions: scalekit.actions,
-      identifier: notionIdentifier,
-      task,
-      maxIterations,
-      onStep: async (step) => {
-        if (step.type === 'tool_call') {
-          console.log(`[tool] ${step.tool} → ${step.status}`);
-          if (step.error) console.error(`  Error: ${step.error}`);
-          if (step.status === 'success') {
-            await Actor.charge({ eventName: 'tool-call', count: 1 });
-          }
-        } else if (step.type === 'final') {
-          console.log('[done] Agent finished.');
-          await Actor.charge({ eventName: 'task-completed', count: 1 });
+  const { result, steps } = await runAgent({
+    client,
+    model: llmModel,
+    scalekitActions: scalekit.actions,
+    notionIdentifier: notionUserEmail,
+    youtubeIdentifier,
+    task,
+    maxIterations,
+    onStep: async (step) => {
+      if (step.type === 'tool_call') {
+        console.log(`[tool] ${step.tool} → ${step.status}`);
+        if (step.error) console.error(`  Error: ${step.error}`);
+        if (step.status === 'success') {
+          await Actor.charge({ eventName: 'tool-call', count: 1 });
         }
-      },
-    });
+      } else if (step.type === 'final') {
+        console.log('[done] Agent finished.');
+        await Actor.charge({ eventName: 'task-completed', count: 1 });
+      }
+    },
+  });
 
-    await Actor.setValue('OUTPUT', { status: 'DONE', notionUserEmail, task, result, steps, llmProvider, model: resolvedModel });
-    await Actor.pushData({ task, result, steps, llmProvider, model: resolvedModel });
-    console.log('\nResult:\n', result);
-  }
+  await Actor.setValue('OUTPUT', { status: 'DONE', notionUserEmail, task, result, steps, model: llmModel });
+  await Actor.pushData({ task, result, steps, model: llmModel });
+  console.log('\nResult:\n', result);
 } catch (err) {
   console.error('Actor failed:', err.message);
   await Actor.fail(err.message);

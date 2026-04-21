@@ -1,44 +1,46 @@
 /**
- * Agentic loop — orchestrates LLM + Notion tool calls until the task is complete.
+ * Agentic loop — orchestrates LLM + Notion and YouTube tool calls until the task is complete.
  */
 
-import { chat, DEFAULT_MODELS } from './llm.js';
+import { chat } from './llm.js';
 import { NOTION_TOOL_DEFINITIONS, executeNotionTool } from './notionTools.js';
+import { YOUTUBE_TOOL_DEFINITIONS, executeYouTubeTool } from './youtubeAgentTools.js';
 
-const SYSTEM_PROMPT = `You are a helpful Notion assistant. You have access to tools that let you search, read, and create Notion pages.
+const ALL_TOOL_DEFINITIONS = [...NOTION_TOOL_DEFINITIONS, ...YOUTUBE_TOOL_DEFINITIONS];
+
+const SYSTEM_PROMPT = `You are a helpful assistant with access to Notion and YouTube tools.
 
 Guidelines:
-- To find a page, always search first using notion_data_fetch before trying to read it.
-- When reading page content, use the page ID returned by the search.
-- When creating a page, confirm what was created in your final response.
-- Be concise and factual. If you cannot complete a task, explain why.
-- Always report the final result clearly to the user.`;
+- To find a Notion page by name, use notion_data_fetch before reading or writing to it.
+- For YouTube channel research, use youtube_search_channels — it handles keyword expansion, search, deduplication, and scoring automatically.
+- To write YouTube research results to Notion, first find the target page with notion_data_fetch, then append formatted blocks with notion_page_content_append.
+- Block format for notion_page_content_append: [{"type":"heading_2","text":"..."}, {"type":"bulleted_list_item","text":"..."}, {"type":"divider"}]
+- Be concise and factual. Always report the final result clearly.`;
 
 /**
  * Run the agent loop for a given task.
  *
  * @param {object} opts
- * @param {object} opts.client           - LLM client (Anthropic or OpenAI)
- * @param {string} opts.provider         - 'anthropic' | 'openai'
- * @param {string} opts.model            - model name
- * @param {object} opts.scalekitActions  - scalekit.actions instance
- * @param {string} opts.identifier       - Scalekit connected account identifier
- * @param {string} opts.task             - natural language task from the user
- * @param {number} opts.maxIterations    - max agent loop iterations
- * @param {Function} opts.onStep         - optional callback(step) for logging each step
+ * @param {object} opts.client              - OpenAI-compatible LLM client
+ * @param {string} opts.model               - model name
+ * @param {object} opts.scalekitActions     - scalekit.actions instance
+ * @param {string} opts.notionIdentifier    - Scalekit connected account identifier for Notion
+ * @param {string} opts.youtubeIdentifier   - Scalekit connected account identifier for YouTube
+ * @param {string} opts.task                - natural language task from the user
+ * @param {number} opts.maxIterations       - max agent loop iterations
+ * @param {Function} opts.onStep            - optional callback(step) for logging each step
  * @returns {Promise<{result: string, steps: object[]}>}
  */
 export async function runAgent({
   client,
-  provider,
   model,
   scalekitActions,
-  identifier,
+  notionIdentifier,
+  youtubeIdentifier = 'shared-youtube',
   task,
   maxIterations = 10,
   onStep = () => {},
 }) {
-  const resolvedModel = model || DEFAULT_MODELS[provider];
   const messages = [{ role: 'user', content: task }];
   const steps = [];
   let iteration = 0;
@@ -48,24 +50,21 @@ export async function runAgent({
 
     const response = await chat({
       client,
-      provider,
-      model: resolvedModel,
+      model,
       systemPrompt: SYSTEM_PROMPT,
       messages,
-      tools: NOTION_TOOL_DEFINITIONS,
+      tools: ALL_TOOL_DEFINITIONS,
     });
 
     messages.push(response.assistantMessage);
 
     if (response.type === 'message') {
-      // Agent is done
       const step = { type: 'final', content: response.content };
       steps.push(step);
       onStep(step);
       return { result: response.content, steps };
     }
 
-    // Tool calls — execute each and feed results back
     for (const toolCall of response.toolCalls) {
       const step = {
         type: 'tool_call',
@@ -77,12 +76,23 @@ export async function runAgent({
 
       let toolResult;
       try {
-        toolResult = await executeNotionTool(
-          scalekitActions,
-          identifier,
-          toolCall.name,
-          toolCall.input
-        );
+        if (toolCall.name.startsWith('youtube_')) {
+          toolResult = await executeYouTubeTool(
+            scalekitActions,
+            youtubeIdentifier,
+            toolCall.name,
+            toolCall.input,
+            client,
+            model,
+          );
+        } else {
+          toolResult = await executeNotionTool(
+            scalekitActions,
+            notionIdentifier,
+            toolCall.name,
+            toolCall.input,
+          );
+        }
         step.output = toolResult;
         step.status = 'success';
       } catch (err) {
@@ -102,7 +112,6 @@ export async function runAgent({
     }
   }
 
-  // Reached max iterations without a final message
   const finalMsg = `Agent reached the maximum of ${maxIterations} iterations without completing the task.`;
   return { result: finalMsg, steps };
 }

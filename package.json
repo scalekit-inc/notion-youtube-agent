@@ -10,7 +10,6 @@
     "dev": "apify run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "@apify/actor-templates": "latest",
     "@scalekit-sdk/node": "latest",
     "apify": "^3.0.0",

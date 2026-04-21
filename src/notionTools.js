@@ -69,6 +69,27 @@ export const NOTION_TOOL_DEFINITIONS = [
     },
   },
   {
+    name: 'notion_page_content_append',
+    description:
+      'Append content blocks to an existing Notion page. Use block_id = the page ID. Blocks use a simplified format: { type, text } where type is one of: paragraph, heading_1, heading_2, heading_3, bulleted_list_item, numbered_list_item, divider. Text is omitted for divider.',
+    parameters: {
+      type: 'object',
+      properties: {
+        block_id: {
+          type: 'string',
+          description: 'The Notion page ID to append blocks to',
+        },
+        blocks: {
+          type: 'array',
+          description:
+            'Blocks to append. Examples: [{"type":"heading_2","text":"Title"}, {"type":"bulleted_list_item","text":"Item"}, {"type":"divider"}]',
+          items: { type: 'object' },
+        },
+      },
+      required: ['block_id', 'blocks'],
+    },
+  },
+  {
     name: 'notion_page_create',
     description:
       'Create a new Notion page. Use parent_page_id to create a child page, or database_id to create a database row. Do not provide both. For child pages with title: pass it in properties as {"title": {"title": [{"text": {"content": "Your Title"}}]}}. child_blocks is optional content.',

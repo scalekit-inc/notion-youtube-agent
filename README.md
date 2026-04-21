@@ -1,24 +1,32 @@
 # Notion YouTube Agent
 
-An AI agent built as an [Apify actor](https://docs.apify.com/platform/actors) that researches YouTube channels for a given keyword and surfaces the most relevant ones directly into a Notion page — with relevance scores, subscriber counts, and sample videos.
+An AI agent built as an [Apify actor](https://docs.apify.com/platform/actors) that accepts a single natural language `task` and handles both Notion operations and YouTube research — or both together in one run.
 
-Also includes a generic Notion agent mode for natural language page operations (search, read, create).
-
-Authentication for both YouTube and Notion is handled by [Scalekit](https://scalekit.com), so the agent never manages OAuth tokens directly.
+Authentication is handled by [Scalekit](https://scalekit.com), so the actor never manages OAuth tokens directly:
+- Per-user Notion accounts identified by `notionUserEmail`
+- A shared YouTube connected account identified by `youtubeIdentifier`
 
 ---
 
 ## What it does
 
-### YouTube Research Mode
-Given a keyword like `"clerk creators"`:
+The agent interprets a free-form task and calls the appropriate tools:
 
-1. Expands it into semantic search variations using an LLM
-2. Searches YouTube for each variation
-3. Deduplicates channels across all results
+**Notion-only examples:**
+- `"List the 5 most recently edited pages in my Notion workspace"`
+- `"Create a new page titled Meeting Notes under the workspace root"`
+- `"Read the content of the page titled Product Roadmap"`
+
+**YouTube → Notion example:**
+- `"Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page"`
+
+For YouTube research, the agent:
+1. Finds the target Notion page by name using `notion_data_fetch`
+2. Expands the keyword into semantic search variations using an LLM
+3. Searches YouTube for each variation and deduplicates channels
 4. Fetches subscriber count and channel metadata
 5. Scores each channel for relevance (0–10) using an LLM
-6. Appends a ranked results section to a Notion page
+6. Appends a ranked results section to the Notion page
 
 **Output in Notion (per channel):**
 - Relevance score and reasoning
@@ -26,22 +34,16 @@ Given a keyword like `"clerk creators"`:
 - Channel URL
 - Sample video link
 
-### Generic Notion Agent Mode
-Natural language operations on your Notion workspace:
-- `"Find all pages about Q1 planning and list their titles"`
-- `"Create a new page titled Meeting Notes under the workspace root"`
-- `"Read the content of the page titled Product Roadmap"`
-
 ---
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) v18+
 - [Apify CLI](https://docs.apify.com/cli): `npm install -g @apify/cli`
-- A [Scalekit](https://scalekit.com) account with:
-  - Notion connected (identifier: `shared-notion`)
-  - YouTube connected (identifier: `shared-youtube`)
-- An API key for [Anthropic](https://console.anthropic.com) or [OpenAI](https://platform.openai.com)
+- A [Scalekit](https://scalekit.com) environment with:
+  - A Notion connection named `notion`
+  - A YouTube connection named `youtube`
+- An OpenAI-compatible LLM endpoint and API key (default: `https://llm.scalekit.cloud` with `claude-sonnet-4-6`)
 
 ---
 
@@ -55,7 +57,7 @@ cd notion-youtube-agent
 npm install
 ```
 
-### 2. Configure environment
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
@@ -67,22 +69,27 @@ Edit `.env` with your Scalekit credentials:
 SCALEKIT_ENV_URL=https://your-env.scalekit.com
 SCALEKIT_CLIENT_ID=prd_skc_xxxxx
 SCALEKIT_CLIENT_SECRET=your_secret
-NOTION_IDENTIFIER=shared-notion
 ```
 
-### 3. Connect Notion and YouTube via Scalekit
+These are operator-level credentials — they authorize the actor to use Scalekit, not individual users.
 
-Run the auth setup script once for each connection. It generates an OAuth link — open it in your browser to authorize.
+### 3. Authorization at runtime
 
-```bash
-# Connect Notion
-npm run auth:setup
+#### Notion (per-user)
 
-# Connect YouTube (update NOTION_IDENTIFIER=shared-youtube in .env first)
-npm run auth:setup
-```
+The actor handles Notion authorization automatically:
 
-Run the script a second time after authorizing to confirm `status: ACTIVE`.
+1. On first run for a given `notionUserEmail`, the actor generates a magic link and writes it to `OUTPUT`
+2. Open the link to authorize Notion for that user
+3. The actor polls until authorization completes, then proceeds
+
+#### YouTube (shared)
+
+The actor now handles YouTube authorization the same way:
+
+1. If the YouTube connected account (`youtubeIdentifier`, default `shared-youtube`) is not yet authorized, the actor generates a magic link and writes it to `OUTPUT`
+2. Open the link to authorize the shared YouTube account (done once by the operator)
+3. The actor polls until authorization completes, then proceeds
 
 ---
 
@@ -104,25 +111,24 @@ npm start
 apify run
 ```
 
+If Notion or YouTube authorization is needed, the actor writes an `AWAITING_*_AUTH` payload to `OUTPUT` with a `magicLink`. Open that link and the actor continues automatically.
+
 ---
 
 ## Input Reference
 
-| Field | Required | Description |
-|---|---|---|
-| `searchKeyword` | Yes (YouTube mode) | Keyword to research, e.g. `"clerk creators"` |
-| `notionPageId` | Yes (YouTube mode) | ID of the Notion page to append results to |
-| `task` | Yes (agent mode) | Natural language Notion task |
-| `llmProvider` | No | `"anthropic"` (default) or `"openai"` |
-| `llmModel` | No | Model name — leave blank for default (`claude-sonnet-4-6` / `gpt-4o`) |
-| `llmApiKey` | Yes | Anthropic or OpenAI API key |
-| `scalekitEnvUrl` | Yes | Your Scalekit environment URL |
-| `scalekitClientId` | Yes | Scalekit OAuth client ID |
-| `scalekitClientSecret` | Yes | Scalekit OAuth client secret |
-| `notionIdentifier` | No | Scalekit identifier for Notion (default: `shared-notion`) |
-| `youtubeIdentifier` | No | Scalekit identifier for YouTube (default: `shared-youtube`) |
-| `topN` | No | Number of top channels to surface (default: `15`) |
-| `maxIterations` | No | Max agent loop iterations in agent mode (default: `10`) |
+Scalekit credentials (`SCALEKIT_ENV_URL`, `SCALEKIT_CLIENT_ID`, `SCALEKIT_CLIENT_SECRET`) are set as actor environment variables, not input fields.
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `task` | Yes | — | Natural language task, e.g. `"Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page"` |
+| `notionUserEmail` | Yes | — | Email used as the Scalekit identifier for the user's Notion connected account |
+| `llmApiKey` | Yes | — | API key for the LLM endpoint |
+| `llmBaseUrl` | No | `https://llm.scalekit.cloud` | OpenAI-compatible endpoint base URL |
+| `llmModel` | No | `claude-sonnet-4-6` | Model name passed to the LLM endpoint |
+| `youtubeIdentifier` | No | `shared-youtube` | Scalekit identifier for the shared YouTube connected account |
+| `authTimeoutSeconds` | No | `300` | How long to wait for Notion or YouTube authorization (seconds) |
+| `maxIterations` | No | `10` | Max agent loop iterations |
 
 ---
 
@@ -135,14 +141,15 @@ apify run
   dataset_schema.json     # Output dataset schema
   pay_per_event.json      # Monetisation event definitions
 src/
-  main.js                 # Actor entry point — routes to workflow or agent
-  agent.js                # Generic Notion agent loop
-  llm.js                  # Unified LLM abstraction (Anthropic + OpenAI)
+  main.js                 # Actor entry point — auth + agent
+  agent.js                # Agentic loop (Notion + YouTube tools)
+  llm.js                  # LLM abstraction (OpenAI-compatible)
   notionTools.js          # Notion tool definitions + Scalekit executor
-  youtubeTools.js         # YouTube tool executor via Scalekit
-  youtubeNotionWorkflow.js # YouTube → Notion research pipeline
-auth-setup/
-  setup.js                # One-time OAuth setup script
+  notionAuth.js           # Notion magic link + polling auth flow
+  youtubeTools.js         # YouTube API calls via Scalekit
+  youtubeAgentTools.js    # youtube_search_channels agent tool definition
+  youtubeResearch.js      # YouTube research pipeline (expand → search → score)
+  youtubeAuth.js          # YouTube magic link + polling auth flow
 ```
 
 ---
@@ -154,27 +161,23 @@ apify login
 apify push
 ```
 
-After pushing, go to **Actor Settings → Monetisation** in the Apify console to enable Pay-Per-Event pricing using the events defined in `.actor/pay_per_event.json`:
+After pushing, set `SCALEKIT_ENV_URL`, `SCALEKIT_CLIENT_ID`, and `SCALEKIT_CLIENT_SECRET` in **Actor Settings → Environment variables** in the Apify console.
+
+To enable Pay-Per-Event pricing, go to **Actor Settings → Monetisation**:
 
 | Event | Default price |
 |---|---|
 | `task-completed` | $0.05 per run |
-| `tool-call` | $0.01 per Notion API call |
+| `tool-call` | $0.01 per tool call |
 
 ---
 
 ## How Authentication Works
 
-This actor uses [Scalekit Agent Auth](https://docs.scalekit.com/agent-auth/quickstart/) to connect to Notion and YouTube. Scalekit stores OAuth tokens, handles refresh, and proxies API calls — so the actor never handles credentials directly.
+This actor uses [Scalekit Agent Auth](https://docs.scalekit.com/agent-auth/quickstart/) to connect to Notion and YouTube. Scalekit stores OAuth tokens, handles refresh, and proxies API calls.
 
-The one-time setup flow:
-1. `auth-setup/setup.js` calls Scalekit to generate an OAuth authorization link
-2. You open the link, authorize in Notion/YouTube
-3. Scalekit stores the token against the `identifier` you provide
-4. All subsequent API calls are proxied through Scalekit automatically
+Auth flow on each run:
 
----
-
-## Switching LLM Providers
-
-Set `llmProvider` to `"openai"` and provide an OpenAI API key — no other changes needed. The `src/llm.js` abstraction normalizes tool-calling across both providers.
+1. **Notion**: looks up or creates a connected account for `notionUserEmail`. If not ACTIVE, generates a magic link, outputs it, and polls until authorized.
+2. **YouTube**: looks up or creates a connected account for `youtubeIdentifier`. If not ACTIVE, generates a magic link, outputs it, and polls until authorized.
+3. Once both accounts are ACTIVE, the agent runs and all API calls are proxied through Scalekit.
