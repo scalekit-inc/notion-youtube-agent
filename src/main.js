@@ -8,9 +8,8 @@
  *   "List the 5 most recently edited pages in my Notion workspace"
  *   "Search YouTube for clerk creators and append the top 10 to my Marketing Research page"
  *
- * Notion auth is per-user: the actor accepts a notionUserEmail, creates a Scalekit
- * connected account with that email as the identifier, generates a magic link if the
- * account is not yet authorized, outputs it immediately, then polls until ACTIVE.
+ * Notion auth is per-user: identifier derived from Apify userId, generates a magic
+ * link if the account is not yet authorized, outputs it immediately, then polls until ACTIVE.
  */
 
 import { Actor } from 'apify';
@@ -64,9 +63,9 @@ try {
       console.log(`Magic link: ${link}\n`);
       await Actor.setValue('OUTPUT', {
         status: 'AWAITING_NOTION_AUTH',
-        notionUserEmail,
+        notionIdentifier,
         magicLink: link,
-        message: `Open the magic link to authorize Notion for ${notionUserEmail}. The actor will continue automatically once you complete authorization.`,
+        message: `Open the magic link to authorize Notion. The actor will continue automatically once you complete authorization.`,
       });
     },
   });
@@ -89,7 +88,7 @@ try {
     client,
     model: llmModel,
     scalekitActions: scalekit.actions,
-    notionIdentifier: notionUserEmail,
+    notionIdentifier,
     youtubeIdentifier,
     task,
     maxIterations,
