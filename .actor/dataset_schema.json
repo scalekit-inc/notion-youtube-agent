@@ -7,22 +7,26 @@
     "task": {
       "title": "Task",
       "type": "string",
-      "description": "The original task given to the agent"
+      "description": "The original task given to the agent",
+      "template": "{{task}}"
     },
     "result": {
       "title": "Result",
       "type": "string",
-      "description": "The final answer produced by the agent"
+      "description": "The final answer produced by the agent",
+      "template": "{{result}}"
     },
     "steps": {
       "title": "Steps",
-      "type": "array",
-      "description": "Tool calls and intermediate steps taken by the agent"
+      "type": "string",
+      "description": "Tool calls and intermediate steps taken by the agent (JSON array)",
+      "template": "{{steps}}"
     },
     "model": {
       "title": "Model",
       "type": "string",
-      "description": "The model name used"
+      "description": "The model name used",
+      "template": "{{model}}"
     }
   }
 }
