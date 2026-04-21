@@ -31,18 +31,20 @@ try {
     llmModel = DEFAULT_MODEL,
     llmApiKey,
     llmBaseUrl = 'https://llm.scalekit.cloud',
-    notionUserEmail,
     youtubeIdentifier = 'shared-youtube',
     maxIterations = 10,
     authTimeoutSeconds = 300,
   } = input;
+
+  const { userId } = Actor.getEnv();
+  const notionIdentifier = userId;
 
   const scalekitEnvUrl = process.env.SCALEKIT_ENV_URL;
   const scalekitClientId = process.env.SCALEKIT_CLIENT_ID;
   const scalekitClientSecret = process.env.SCALEKIT_CLIENT_SECRET;
 
   if (!task) throw new Error('Input "task" is required.');
-  if (!notionUserEmail) throw new Error('Input "notionUserEmail" is required.');
+  if (!notionIdentifier) throw new Error('Could not determine Apify user ID — cannot identify Notion account.');
   if (!llmApiKey) throw new Error('Input "llmApiKey" is required.');
   if (!scalekitEnvUrl || !scalekitClientId || !scalekitClientSecret) {
     throw new Error('Scalekit credentials missing. Set SCALEKIT_ENV_URL, SCALEKIT_CLIENT_ID, SCALEKIT_CLIENT_SECRET as actor environment variables.');
@@ -52,13 +54,13 @@ try {
   const scalekit = new ScalekitClient(scalekitEnvUrl, scalekitClientId, scalekitClientSecret);
 
   console.log(`LLM: ${llmBaseUrl} / ${llmModel}`);
-  console.log(`Notion user: ${notionUserEmail}`);
+  console.log(`Notion identifier: ${notionIdentifier} (Apify userId)`);
   console.log(`Task: ${task}`);
 
-  await ensureNotionConnected(scalekit.actions, notionUserEmail, {
+  await ensureNotionConnected(scalekit.actions, notionIdentifier, {
     timeoutMs: authTimeoutSeconds * 1000,
     onMagicLink: async (link) => {
-      console.log(`\nNotion authorization required for ${notionUserEmail}.`);
+      console.log(`\nNotion authorization required for "${notionIdentifier}".`);
       console.log(`Magic link: ${link}\n`);
       await Actor.setValue('OUTPUT', {
         status: 'AWAITING_NOTION_AUTH',
@@ -105,7 +107,7 @@ try {
     },
   });
 
-  await Actor.setValue('OUTPUT', { status: 'DONE', notionUserEmail, task, result, steps, model: llmModel });
+  await Actor.setValue('OUTPUT', { status: 'DONE', notionIdentifier, task, result, steps, model: llmModel });
   await Actor.pushData({ task, result, steps, model: llmModel });
   console.log('\nResult:\n', result);
 } catch (err) {

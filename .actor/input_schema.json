@@ -31,13 +31,6 @@
       "isSecret": true,
       "editor": "textfield"
     },
-    "notionUserEmail": {
-      "title": "Notion User Email",
-      "type": "string",
-      "description": "Email of the user authorizing Notion. Used as the Scalekit connected-account identifier. If the account is not yet authorized, a magic link is generated and surfaced as output — open it to connect your Notion workspace.",
-      "placeholder": "e.g. you@yourcompany.com",
-      "editor": "textfield"
-    },
     "authTimeoutSeconds": {
       "title": "Auth Timeout (seconds)",
       "type": "integer",
@@ -63,5 +56,5 @@
       "maximum": 50
     }
   },
-  "required": ["notionUserEmail", "llmApiKey", "task"]
+  "required": ["llmApiKey", "task"]
 }
