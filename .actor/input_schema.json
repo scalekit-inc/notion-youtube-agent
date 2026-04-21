@@ -6,8 +6,7 @@
     "task": {
       "title": "Task",
       "type": "string",
-      "description": "Natural language task for the agent. Can involve Notion operations, YouTube research, or both.",
-      "placeholder": "e.g. List the 5 most recently edited pages in my Notion workspace\ne.g. Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page",
+      "description": "Natural language task for the agent. Examples: 'List the 5 most recently edited pages in my Notion workspace' or 'Search YouTube for clerk creators and append the top 10 channels to my Marketing Research page'.",
       "editor": "textarea"
     },
     "llmBaseUrl": {
@@ -44,7 +43,6 @@
       "type": "string",
       "description": "Scalekit identifier for the shared YouTube connected account. Only needed for tasks that involve YouTube research. Leave as default unless you have a dedicated YouTube connection.",
       "default": "shared-youtube",
-      "placeholder": "shared-youtube",
       "editor": "textfield"
     },
     "maxIterations": {
