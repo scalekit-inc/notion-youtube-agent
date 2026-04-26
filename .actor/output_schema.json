@@ -1,0 +1,20 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "Notion + YouTube Agent Output",
+  "description": "Interactive authorization UI and task results produced by the actor.",
+  "type": "object",
+  "properties": {
+    "view": {
+      "type": "string",
+      "title": "View",
+      "description": "Interactive browser view served by the actor for authorization and run status.",
+      "template": "{{run.containerUrl}}"
+    },
+    "results": {
+      "type": "string",
+      "title": "Results",
+      "description": "Task result items pushed to the default dataset.",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    }
+  }
+}

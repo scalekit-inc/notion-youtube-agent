@@ -5,7 +5,7 @@
   "description": "AI agent that handles Notion operations and YouTube channel research from a single natural language task. Authenticated via Scalekit.",
   "version": "1.0",
   "input": "./input_schema.json",
-  "output": "./dataset_schema.json",
+  "output": "./output_schema.json",
   "dockerfile": "../Dockerfile",
   "pay_per_event": "./pay_per_event.json"
 }

@@ -19,7 +19,7 @@ import { DEFAULT_MODEL } from './llm.js';
 import { runAgent } from './agent.js';
 import { ensureNotionConnected } from './notionAuth.js';
 import { ensureYouTubeConnected } from './youtubeAuth.js';
-import { serveAuthPage } from './authServer.js';
+import { serveAuthPage, showErrorPage, showFinalPage, startAuthServer } from './authServer.js';
 
 await Actor.init();
 
@@ -52,9 +52,11 @@ try {
 
   const client = new OpenAI({ apiKey: llmApiKey, baseURL: llmBaseUrl });
   const scalekit = new ScalekitClient(scalekitEnvUrl, scalekitClientId, scalekitClientSecret);
+  const { liveViewUrl } = await startAuthServer();
 
   console.log(`LLM: ${llmBaseUrl} / ${llmModel}`);
   console.log(`Notion identifier: ${notionIdentifier} (Apify userId)`);
+  console.log(`Actor web view: ${liveViewUrl}`);
   console.log(`Task: ${task}`);
 
   await ensureNotionConnected(scalekit.actions, notionIdentifier, {
@@ -66,7 +68,7 @@ try {
         status: 'AWAITING_NOTION_AUTH',
         authPageUrl: liveViewUrl,
         magicLink: link,
-        message: 'Open authPageUrl in your browser to authorize Notion.',
+        message: 'Open the View output tab to authorize Notion.',
       });
       await Actor.setStatusMessage(`ACTION REQUIRED: Authorize Notion → ${liveViewUrl}`);
       return markDone;
@@ -82,7 +84,7 @@ try {
         status: 'AWAITING_YOUTUBE_AUTH',
         authPageUrl: liveViewUrl,
         magicLink: link,
-        message: 'Open authPageUrl in your browser to authorize YouTube.',
+        message: 'Open the View output tab to authorize YouTube.',
       });
       await Actor.setStatusMessage(`ACTION REQUIRED: Authorize YouTube → ${liveViewUrl}`);
       return markDone;
@@ -111,11 +113,13 @@ try {
     },
   });
 
+  await showFinalPage(result);
   await Actor.setValue('OUTPUT', { status: 'DONE', notionIdentifier, task, result, steps, model: llmModel });
   await Actor.pushData({ task, result, steps, model: llmModel });
   console.log('\nResult:\n', result);
 } catch (err) {
   console.error('Actor failed:', err.message);
+  await showErrorPage(err.message);
   await Actor.fail(err.message);
 }
 

@@ -138,7 +138,7 @@ Scalekit credentials (`SCALEKIT_ENV_URL`, `SCALEKIT_CLIENT_ID`, `SCALEKIT_CLIENT
 .actor/
   actor.json              # Apify actor metadata
   input_schema.json       # Apify Store UI form definition
-  dataset_schema.json     # Output dataset schema
+  output_schema.json      # Actor output links for web view + dataset results
   pay_per_event.json      # Monetisation event definitions
 src/
   main.js                 # Actor entry point — auth + agent
