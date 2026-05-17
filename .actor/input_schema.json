@@ -12,21 +12,21 @@
     "llmBaseUrl": {
       "title": "LLM Base URL",
       "type": "string",
-      "description": "OpenAI-compatible endpoint base URL. Defaults to https://llm.scalekit.cloud.",
-      "default": "https://llm.scalekit.cloud",
+      "description": "OpenAI-compatible endpoint. Defaults to Apify's OpenRouter proxy, which bills LLM usage to your Apify credits.",
+      "default": "https://openrouter.apify.actor/api/v1",
       "editor": "textfield"
     },
     "llmModel": {
       "title": "LLM Model",
       "type": "string",
-      "description": "Model name passed to the LLM endpoint.",
-      "default": "claude-sonnet-4-6",
+      "description": "Model name in OpenRouter format (provider/model). Examples: anthropic/claude-sonnet-4-6, openai/gpt-4o, openrouter/auto.",
+      "default": "anthropic/claude-sonnet-4-6",
       "editor": "textfield"
     },
     "llmApiKey": {
       "title": "LLM API Key",
       "type": "string",
-      "description": "API key for the LLM endpoint. Optional when LLM_API_KEY is set as an actor environment variable.",
+      "description": "API key for a custom LLM endpoint. Only needed when llmBaseUrl is changed from the default Apify OpenRouter proxy. Falls back to LLM_API_KEY env var.",
       "isSecret": true,
       "editor": "textfield"
     },

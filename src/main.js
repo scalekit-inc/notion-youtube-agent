@@ -29,8 +29,7 @@ try {
   const {
     task,
     llmModel = DEFAULT_MODEL,
-    llmApiKey,
-    llmBaseUrl = 'https://llm.scalekit.cloud',
+    llmBaseUrl = 'https://openrouter.apify.actor/api/v1',
     maxIterations = 10,
     authTimeoutSeconds = 300,
     notionDefaultParentPageId = process.env.NOTION_DEFAULT_PARENT_PAGE_ID,
@@ -44,16 +43,28 @@ try {
   const scalekitEnvUrl = process.env.SCALEKIT_ENV_URL;
   const scalekitClientId = process.env.SCALEKIT_CLIENT_ID;
   const scalekitClientSecret = process.env.SCALEKIT_CLIENT_SECRET;
-  const resolvedLlmApiKey = llmApiKey || process.env.LLM_API_KEY;
+  const apifyToken = process.env.APIFY_TOKEN;
+  const isApifyOpenRouter = llmBaseUrl === 'https://openrouter.apify.actor/api/v1';
+  const llmApiKey = input.llmApiKey || process.env.LLM_API_KEY;
 
   if (!task) throw new Error('Input "task" is required.');
   if (!notionIdentifier) throw new Error('Could not determine Apify user ID — cannot identify Notion account.');
-  if (!resolvedLlmApiKey) throw new Error('Set input "llmApiKey" or actor environment variable LLM_API_KEY.');
+  if (isApifyOpenRouter && !apifyToken) {
+    throw new Error('APIFY_TOKEN not available. Run this actor on the Apify platform or set APIFY_TOKEN for local development.');
+  }
+  if (!isApifyOpenRouter && !llmApiKey) {
+    throw new Error('An LLM API key is required when using a custom llmBaseUrl. Set input "llmApiKey" or the LLM_API_KEY environment variable.');
+  }
   if (!scalekitEnvUrl || !scalekitClientId || !scalekitClientSecret) {
     throw new Error('Scalekit credentials missing. Set SCALEKIT_ENV_URL, SCALEKIT_CLIENT_ID, SCALEKIT_CLIENT_SECRET as actor environment variables.');
   }
 
-  const client = new OpenAI({ apiKey: resolvedLlmApiKey, baseURL: llmBaseUrl });
+  const client = new OpenAI({
+    baseURL: llmBaseUrl,
+    ...(isApifyOpenRouter
+      ? { apiKey: 'apify-openrouter', defaultHeaders: { Authorization: `Bearer ${apifyToken}` } }
+      : { apiKey: llmApiKey }),
+  });
   const scalekit = new ScalekitClient(scalekitEnvUrl, scalekitClientId, scalekitClientSecret);
   const { liveViewUrl } = await startAuthServer();
 

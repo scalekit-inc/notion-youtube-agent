@@ -13,7 +13,7 @@
  *   { type: 'tool_calls', toolCalls: ToolCall[], assistantMessage }
  */
 
-export const DEFAULT_MODEL = 'claude-sonnet-4-6';
+export const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-6';
 
 // ── Tool definition converters ────────────────────────────────────────────────
 
