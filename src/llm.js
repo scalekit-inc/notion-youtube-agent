@@ -85,11 +85,16 @@ export async function chat({ client, model, systemPrompt, messages, tools }) {
   const msg = response.choices[0].message;
 
   if (msg.tool_calls?.length > 0) {
-    const toolCalls = msg.tool_calls.map((tc) => ({
-      id: tc.id,
-      name: tc.function.name,
-      input: JSON.parse(tc.function.arguments),
-    }));
+    const toolCalls = msg.tool_calls.map((tc) => {
+      let input;
+      try {
+        input = JSON.parse(tc.function.arguments);
+      } catch {
+        console.warn(`[llm] Failed to parse arguments for ${tc.function.name}: ${tc.function.arguments.slice(0, 120)}…`);
+        input = { __parse_error: `Malformed JSON from LLM: ${tc.function.arguments.slice(0, 200)}` };
+      }
+      return { id: tc.id, name: tc.function.name, input };
+    });
     return {
       type: 'tool_calls',
       toolCalls,
